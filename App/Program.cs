@@ -1,66 +1,22 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using System.Xml;
 
-string? host, route, credentials;
-host = route = credentials = null;
-
-bool ReadArg(string key, int index, out string? value)
-{
-    bool result = string.Equals("-" + key, args[index], StringComparison.OrdinalIgnoreCase) && args.Length > index + 1;
-    value = result ? args[index + 1] : null;
-    return result;
-}
-
-void CheckArg(string key, string? value)
-{
-    if (string.IsNullOrWhiteSpace(value))
-    {
-        throw new ArgumentException($"Missing required '-{key}' argument");
-    }
-}
-
-HttpRequestMessage GetRequest(HttpMethod httpMethod, string requestUri)
-{
-    var request = new HttpRequestMessage(httpMethod, requestUri);
-    request.Headers.Authorization
-        = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials!)));
-    return request;
-}
-
-for (int i = 0; i < args.Length; i++)
-{
-    if (ReadArg(nameof(host), i, out string? value))
-    {
-        host = value;
-    }
-
-    if (ReadArg(nameof(route), i, out value))
-    {
-        route = value;
-    }
-
-    if (ReadArg(nameof(credentials), i, out value))
-    {
-        credentials = value;
-    }
-}
-
-CheckArg(nameof(host), host);
-CheckArg(nameof(route), route);
-CheckArg(nameof(credentials), credentials);
+var config = LoadConfiguration();
 
 using var client = new HttpClient();
 
-// request contents of a folder
-using var request = GetRequest(new HttpMethod("PROPFIND"), host + route);
+// Request contents of a folder.
+using var request = GetRequest(new HttpMethod("PROPFIND"), config.Host + config.Route, config.Credentials);
 using var response = await client.SendAsync(request);
 
 var xml = new XmlDocument();
-xml.Load(response.Content.ReadAsStream());
+xml.Load(await response.Content.ReadAsStreamAsync());
 
 var mng = new XmlNamespaceManager(xml.NameTable);
 mng.AddNamespace("d", "DAV:");
@@ -77,12 +33,79 @@ if (nodes != null)
 
 foreach (string path in paths)
 {
-    if (string.Equals(path, route, StringComparison.OrdinalIgnoreCase))
+    if (string.Equals(path, config.Route, StringComparison.OrdinalIgnoreCase))
     {
         continue;
     }
 
-    // request to delete the file
-    using var req = GetRequest(HttpMethod.Delete, host + path);
-    using var deleteReponse = await client.SendAsync(req);
+    // Request deletion of each returned item except the folder itself.
+    using var req = GetRequest(HttpMethod.Delete, config.Host + path, config.Credentials);
+    using var deleteResponse = await client.SendAsync(req);
+}
+
+static AppConfiguration LoadConfiguration()
+{
+    string configPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+    if (!File.Exists(configPath))
+    {
+        throw new FileNotFoundException($"Missing configuration file '{configPath}'.");
+    }
+
+    string json = File.ReadAllText(configPath);
+    RootConfiguration? root = JsonSerializer.Deserialize<RootConfiguration>(
+        json,
+        new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+    OwnCloudConfiguration? configuration = root?.OwnCloud;
+    if (configuration == null)
+    {
+        throw new ArgumentException("Missing 'OwnCloud' configuration section in appsettings.json.");
+    }
+
+    string? credentials = Environment.GetEnvironmentVariable("OWNCLOUD_CREDENTIALS");
+    if (!string.IsNullOrWhiteSpace(credentials))
+    {
+        configuration.Credentials = credentials;
+    }
+
+    CheckConfig(nameof(configuration.Host), configuration.Host);
+    CheckConfig(nameof(configuration.Route), configuration.Route);
+    CheckConfig(nameof(configuration.Credentials), configuration.Credentials);
+
+    return new AppConfiguration(configuration.Host!, configuration.Route!, configuration.Credentials!);
+}
+
+static void CheckConfig(string key, string? value)
+{
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        throw new ArgumentException($"Missing required configuration value '{key}'.");
+    }
+}
+
+static HttpRequestMessage GetRequest(HttpMethod httpMethod, string requestUri, string credentials)
+{
+    var request = new HttpRequestMessage(httpMethod, requestUri);
+    request.Headers.Authorization =
+        new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials)));
+    return request;
+}
+
+internal sealed record AppConfiguration(string Host, string Route, string Credentials);
+
+internal sealed class RootConfiguration
+{
+    public OwnCloudConfiguration? OwnCloud { get; set; }
+}
+
+internal sealed class OwnCloudConfiguration
+{
+    public string? Host { get; set; }
+
+    public string? Route { get; set; }
+
+    public string? Credentials { get; set; }
 }

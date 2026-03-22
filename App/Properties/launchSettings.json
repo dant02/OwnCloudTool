@@ -2,7 +2,9 @@
   "profiles": {
     "App": {
       "commandName": "Project",
-      "commandLineArgs": "-host https://example.com -route /remote.php/dav/trash-bin/<example user>/ -credentials logname:psswd"
+      "environmentVariables": {
+        "OWNCLOUD_CREDENTIALS": "logname:psswd"
+      }
     }
   }
 }
