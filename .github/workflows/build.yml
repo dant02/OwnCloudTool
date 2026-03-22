@@ -20,11 +20,8 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore Windows dependencies
-        run: dotnet restore App/App.csproj --runtime win-x64
-
-      - name: Restore Linux dependencies
-        run: dotnet restore App/App.csproj --runtime linux-x64
+      - name: Restore dependencies
+        run: dotnet restore App/App.csproj
 
       - name: Publish Windows release
         run: dotnet publish App/App.csproj --configuration Release --runtime win-x64 --self-contained false --no-restore --output artifacts/win-x64
