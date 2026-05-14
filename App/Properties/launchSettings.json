@@ -5,6 +5,13 @@
       "environmentVariables": {
         "OWNCLOUD_CREDENTIALS": "logname:psswd"
       }
+    },
+    "App Download": {
+      "commandName": "Project",
+      "commandLineArgs": "download -route /remote.php/dav/files/example-user/Documents/ -folder C:\\Temp\\owncloud-download",
+      "environmentVariables": {
+        "OWNCLOUD_CREDENTIALS": "logname:psswd"
+      }
     }
   }
 }

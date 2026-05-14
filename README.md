@@ -11,9 +11,9 @@ The application currently:
 - loads settings from `appsettings.json`
 - reads `Host` and `Route` from the `OwnCloud` configuration section
 - uses `OWNCLOUD_CREDENTIALS` as an environment-variable override for credentials when present
-- sends a WebDAV `PROPFIND` request to `host + route`
-- reads `DAV:href` entries from the XML response
-- sends an HTTP `DELETE` request for each returned path except the route itself
+- supports a default `clean` command that deletes items from the configured `Route`
+- supports a `download` command that recursively downloads files from a WebDAV route to a local folder
+- shows console progress while scanning folders and downloading files
 
 Example target route:
 
@@ -45,24 +45,44 @@ Configuration values:
 
 If the `OWNCLOUD_CREDENTIALS` environment variable is set, it overrides `OwnCloud:Credentials` from the file. That is the recommended way to provide secrets on a server.
 
-The Visual Studio launch profile in [App/Properties/launchSettings.json](App/Properties/launchSettings.json) contains a sample `OWNCLOUD_CREDENTIALS` value for local debugging.
+The Visual Studio launch profiles in [App/Properties/launchSettings.json](App/Properties/launchSettings.json) contain sample `OWNCLOUD_CREDENTIALS` values for local debugging.
 
 ## Run Locally
 
 1. Update [App/appsettings.json](App/appsettings.json) with your server `Host` and `Route`.
 2. Set credentials either in the config file or in the `OWNCLOUD_CREDENTIALS` environment variable.
-3. Run the app:
+3. Run one of the supported commands.
+
+Clean the configured `OwnCloud:Route`:
 
 ```powershell
 dotnet run --project App
+```
+
+You can also call the command explicitly:
+
+```powershell
+dotnet run --project App -- clean
+```
+
+Recursively download files from a WebDAV route to a local folder:
+
+```powershell
+dotnet run --project App -- download `
+  -route /remote.php/dav/files/example-user/Documents/ `
+  -folder C:\Temp\owncloud-download
 ```
 
 Example PowerShell session using an environment variable:
 
 ```powershell
 $env:OWNCLOUD_CREDENTIALS = "username:password"
-dotnet run --project App
+dotnet run --project App -- download `
+  -route /remote.php/dav/files/example-user/Documents/ `
+  -folder C:\Temp\owncloud-download
 ```
+
+The `download` command scans the source route recursively, creates matching local folders, downloads files with `GET`, and prints per-file byte progress in the console.
 
 ## Build And Publish
 
@@ -169,8 +189,8 @@ journalctl -u owncloudtool.service
 - delete operations are real and irreversible
 - there is no dry-run mode
 - there are no confirmation prompts
-- HTTP response handling is still minimal
 - credentials still use Basic auth
+- downloads overwrite existing local files with the same path
 
 ## Warning
 
