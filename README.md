@@ -89,7 +89,7 @@ The `download` command scans the source route recursively, creates matching loca
 Build the solution:
 
 ```powershell
-dotnet build OwnCloudTool.sln
+dotnet build OwnCloudTool.slnx
 ```
 
 Publish both supported release targets with the helper script:
