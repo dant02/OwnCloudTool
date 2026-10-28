@@ -1,0 +1,18 @@
+[Unit]
+Description=OwnCloudTool web dashboard
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/owncloudtool-web
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5080
+Environment=OWNCLOUD_CREDENTIALS=replace-with-owncloud-username-and-password
+Environment=OWNCLOUDTOOL_WEB_USERNAME=admin
+Environment=OWNCLOUDTOOL_WEB_PASSWORD=replace-with-a-long-random-password
+ExecStart=/opt/owncloudtool-web/Web
+Restart=on-failure
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

@@ -18,10 +18,10 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Restore dependencies
-        run: dotnet restore App/App.csproj
+        run: dotnet restore OwnCloudTool.slnx
 
       - name: Publish Windows release
         run: dotnet publish App/App.csproj --configuration Release --runtime win-x64 --self-contained false --no-restore --output artifacts/win-x64
@@ -40,3 +40,21 @@ jobs:
         with:
           name: owncloudtool-linux-x64
           path: artifacts/linux-x64/
+
+      - name: Publish Windows web release
+        run: dotnet publish Web/Web.csproj --configuration Release --runtime win-x64 --self-contained false --no-restore --output artifacts/web-win-x64
+
+      - name: Upload Windows web release artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: owncloudtool-web-win-x64
+          path: artifacts/web-win-x64/
+
+      - name: Publish Linux web release
+        run: dotnet publish Web/Web.csproj --configuration Release --runtime linux-x64 --self-contained false --no-restore --output artifacts/web-linux-x64
+
+      - name: Upload Linux web release artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: owncloudtool-web-linux-x64
+          path: artifacts/web-linux-x64/

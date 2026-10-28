@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/dant02/OwnCloudTool/actions/workflows/build.yml/badge.svg)](https://github.com/dant02/OwnCloudTool/actions/workflows/build.yml)
 
-Small .NET 8 console utility for cleaning an ownCloud WebDAV folder, such as an ownCloud trash-bin route.
+Cross-platform .NET 10 utility and LAN web dashboard for managing an ownCloud WebDAV folder, such as an ownCloud trash-bin route.
 
 ## Current Behavior
 
@@ -14,6 +14,7 @@ The application currently:
 - supports a default `clean` command that deletes items from the configured `Route`
 - supports a `download` command that recursively downloads files from a WebDAV route to a local folder
 - shows console progress while scanning folders and downloading files
+- provides an authenticated web dashboard that displays active and completed jobs
 
 Example target route:
 
@@ -121,6 +122,7 @@ The workflow currently:
 - restores the app project
 - publishes a Windows release artifact named `owncloudtool-win-x64`
 - publishes a Linux release artifact named `owncloudtool-linux-x64`
+- publishes web-dashboard artifacts for both Windows and Linux
 
 Workflow file:
 
@@ -195,3 +197,52 @@ journalctl -u owncloudtool.service
 ## Warning
 
 Double-check the configured `Route` value before running this tool. It is intended for cleanup and will attempt to delete every returned entry under the target WebDAV route except the route itself.
+
+## Web Dashboard
+
+The `Web` project is an ASP.NET Core application that uses the shared `Core` library. It shows the configured server and cleanup route, active job progress, completed jobs, and failures. Cleanup and download actions run in the background, so the page remains responsive.
+
+The dashboard is protected with HTTP Basic authentication. Before starting it, set these environment variables:
+
+- `OWNCLOUD_CREDENTIALS`: ownCloud Basic-auth credentials (`username:password`)
+- `OWNCLOUDTOOL_WEB_PASSWORD`: a strong password for dashboard access (required)
+- `OWNCLOUDTOOL_WEB_USERNAME`: dashboard user name (optional; defaults to `admin`)
+
+Run locally:
+
+```bash
+export OWNCLOUD_CREDENTIALS='username:password'
+export OWNCLOUDTOOL_WEB_PASSWORD='use-a-long-random-password'
+dotnet run --project Web
+```
+
+The web app reads the same `appsettings.json` format as the CLI. It only stores job history in memory; restarting the service clears that history.
+
+### Ubuntu with Apache
+
+Publish the Linux web project and copy its output to `/opt/owncloudtool-web`:
+
+```bash
+dotnet publish Web/Web.csproj -c Release -r linux-x64 --self-contained false -o ./publish/web-linux-x64
+```
+
+Install [Deployment/owncloudtool-web.service](Deployment/owncloudtool-web.service) as `/etc/systemd/system/owncloudtool-web.service`, replace its example credentials, then enable it:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now owncloudtool-web.service
+```
+
+Enable Apache's proxy modules, copy [Deployment/owncloudtool-web.apache.conf](Deployment/owncloudtool-web.apache.conf) into an enabled site, set `ServerName` to the LAN DNS name or server address, then reload Apache:
+
+```bash
+sudo a2enmod proxy proxy_http
+sudo a2ensite owncloudtool-web
+sudo systemctl reload apache2
+```
+
+The service binds only to `127.0.0.1:5080`; Apache is the only LAN-facing component. Configure HTTPS on the Apache virtual host before exposing it outside a trusted network.
+
+### Windows
+
+Publish `Web/Web.csproj` with runtime `win-x64`, set the same environment variables, and host the resulting `Web.exe` as a Windows Service. IIS may be used as a reverse proxy, but it is not required for a LAN-only deployment if Kestrel is bound to a suitable private-network address.
