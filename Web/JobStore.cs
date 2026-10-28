@@ -14,7 +14,7 @@ public sealed class JobStore
     }
 
     public WebJob[] GetJobs()
-            => [.. jobs.Values.OrderByDescending(job => job.StartedAt)];
+        => [.. jobs.Values.OrderByDescending(job => job.StartedAt)];
 }
 
 public sealed class WebJob(Guid id, string type, DateTimeOffset startedAt)
