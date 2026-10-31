@@ -233,13 +233,15 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now owncloudtool-web.service
 ```
 
-Enable Apache's proxy modules, copy [Deployment/owncloudtool-web.apache.conf](Deployment/owncloudtool-web.apache.conf) into an enabled site, set `ServerName` to the LAN DNS name or server address, then reload Apache:
+Enable Apache's proxy and headers modules, copy [Deployment/owncloudtool-web.apache.conf](Deployment/owncloudtool-web.apache.conf) into an enabled site, set `ServerName` to the LAN DNS name or server address, then reload Apache:
 
 ```bash
-sudo a2enmod proxy proxy_http
+sudo a2enmod proxy proxy_http headers
 sudo a2ensite owncloudtool-web
 sudo systemctl reload apache2
 ```
+
+Apache publishes the dashboard at `/owncloudtool` and sends `X-Forwarded-Prefix: /owncloudtool`. The web app applies that header as its path base so form posts, redirects, and links stay under the prefix.
 
 The service binds only to `127.0.0.1:5080`; Apache is the only LAN-facing component. Configure HTTPS on the Apache virtual host before exposing it outside a trusted network.
 
