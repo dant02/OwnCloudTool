@@ -43,13 +43,27 @@ app.MapGet("/", (HttpRequest request, JobStore store) =>
 {
     OwnCloudConfiguration config = LoadConfiguration();
     string pathBase = request.PathBase.Value ?? string.Empty;
-    string jobs = string.Join(string.Empty, store.GetJobs().Select(job => $"<tr><td>{Html(job.Type)}</td><td>{Html(job.Status)}</td><td>{Html(job.LastMessage ?? job.Error ?? "-")}</td><td>{job.StartedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}</td></tr>");
+    var jobs = store.GetJobs().Select(job =>
+    {
+        string Cell(string value)
+        {
+            return $"<td>{Html(value)}</td>";
+        }
+
+        return $"<tr>"
+        + Cell(job.Type)
+        + Cell(job.Status)
+        + Cell(job.LastMessage ?? job.Error ?? "-")
+        + Cell($"{job.StartedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}")
+        + "</tr>";
+    });
+
     return Results.Content($$"""
         <!doctype html><html><head><title>OwnCloudTool</title><meta http-equiv="refresh" content="5"><style>body{font-family:system-ui;max-width:900px;margin:2rem auto}fieldset{margin:1rem 0;padding:1rem}input{min-width:28rem}button{padding:.5rem 1rem}table{border-collapse:collapse;width:100%}td,th{padding:.5rem;border-bottom:1px solid #ddd;text-align:left}.warning{color:#9b2c2c}</style></head><body>
         <h1>OwnCloudTool</h1><p>Server: <code>{{Html(config.Host)}}</code><br>Cleanup route: <code>{{Html(config.Route)}}</code></p>
         <fieldset><legend class="warning">Cleanup (permanently deletes items)</legend><form method="post" action="{{Html(pathBase)}}/jobs/clean"><button type="submit">Start cleanup</button></form></fieldset>
         <fieldset><legend>Download</legend><form method="post" action="{{Html(pathBase)}}/jobs/download"><label>WebDAV route <input name="route" required></label><br><label>Server folder <input name="folder" required></label><br><button type="submit">Start download</button></form></fieldset>
-        <h2>Jobs</h2><table><tr><th>Type</th><th>Status</th><th>Latest detail</th><th>Started</th></tr>{{jobs}}</table></body></html>
+        <h2>Jobs</h2><table><tr><th>Type</th><th>Status</th><th>Latest detail</th><th>Started</th></tr>{{string.Join(string.Empty, jobs)}}</table></body></html>
         """, "text/html");
 });
 
