@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -42,7 +43,7 @@ app.MapGet("/", (HttpRequest request, JobStore store) =>
 {
     OwnCloudConfiguration config = LoadConfiguration();
     string pathBase = request.PathBase.Value ?? string.Empty;
-    string jobs = string.Join(string.Empty, store.GetJobs().Select(job => $"<tr><td>{Html(job.Type)}</td><td>{Html(job.Status)}</td><td>{Html(job.LastMessage ?? job.Error ?? "-")}</td><td>{job.StartedAt.LocalDateTime:g}</td></tr>"));
+    string jobs = string.Join(string.Empty, store.GetJobs().Select(job => $"<tr><td>{Html(job.Type)}</td><td>{Html(job.Status)}</td><td>{Html(job.LastMessage ?? job.Error ?? "-")}</td><td>{job.StartedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)}</td></tr>");
     return Results.Content($$"""
         <!doctype html><html><head><title>OwnCloudTool</title><meta http-equiv="refresh" content="5"><style>body{font-family:system-ui;max-width:900px;margin:2rem auto}fieldset{margin:1rem 0;padding:1rem}input{min-width:28rem}button{padding:.5rem 1rem}table{border-collapse:collapse;width:100%}td,th{padding:.5rem;border-bottom:1px solid #ddd;text-align:left}.warning{color:#9b2c2c}</style></head><body>
         <h1>OwnCloudTool</h1><p>Server: <code>{{Html(config.Host)}}</code><br>Cleanup route: <code>{{Html(config.Route)}}</code></p>
